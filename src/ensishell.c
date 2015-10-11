@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #include "variante.h"
 #include "readcmd.h"
@@ -31,10 +33,26 @@ int executer(char *line)
 	 * parsecmd, then fork+execvp, for a single command.
 	 * pipe and i/o redirection are not required.
 	 */
-	printf("Not implemented: can not execute %s\n", line);
+	//printf("Not implemented: can not execute %s\n", line);
+
+	
+	struct cmdline *l;
+	l = parsecmd( & line);
+	if (l->err) {
+		/* Syntax error, read another command */
+		printf("error: %s\n", l->err);
+		return 1;
+	}
+	pid_t process = fork();
+	if(process == 0){
+		execvp((l->seq[0])[0], l->seq[0]);
+	}
+	else{
+		waitpid(process, NULL, 0);
+	}
 
 	/* Remove this line when using parsecmd as it will free it */
-	free(line);
+	//free(line);
 	
 	return 0;
 }
@@ -68,9 +86,9 @@ int main() {
 #endif
 
 	while (1) {
-		struct cmdline *l;
+		//struct cmdline *l;
 		char *line=0;
-		int i, j;
+		//int i, j;
 		char *prompt = "ensishell>";
 
 		/* Readline use some internal memory structure that
@@ -97,36 +115,37 @@ int main() {
                 }
 #endif
 
-		/* parsecmd free line and set it up to 0 */
-		l = parsecmd( & line);
-
-		/* If input stream closed, normal termination */
-		if (!l) {
-		  
-			terminate(0);
-		}
-		
-
-		
-		if (l->err) {
-			/* Syntax error, read another command */
-			printf("error: %s\n", l->err);
-			continue;
-		}
-
-		if (l->in) printf("in: %s\n", l->in);
-		if (l->out) printf("out: %s\n", l->out);
-		if (l->bg) printf("background (&)\n");
-
-		/* Display each command of the pipe */
-		for (i=0; l->seq[i]!=0; i++) {
-			char **cmd = l->seq[i];
-			printf("seq[%d]: ", i);
-                        for (j=0; cmd[j]!=0; j++) {
-                                printf("'%s' ", cmd[j]);
-                        }
-			printf("\n");
-		}
+		executer(line);
+//		/* parsecmd free line and set it up to 0 */
+//		l = parsecmd( & line);
+//
+//		/* If input stream closed, normal termination */
+//		if (!l) {
+//		  
+//			terminate(0);
+//		}
+//		
+//
+//		
+//		if (l->err) {
+//			/* Syntax error, read another command */
+//			printf("error: %s\n", l->err);
+//			continue;
+//		}
+//
+//		if (l->in) printf("in: %s\n", l->in);
+//		if (l->out) printf("out: %s\n", l->out);
+//		if (l->bg) printf("background (&)\n");
+//
+//		/* Display each command of the pipe */
+//		for (i=0; l->seq[i]!=0; i++) {
+//			char **cmd = l->seq[i];
+//			printf("seq[%d]: ", i);
+//                        for (j=0; cmd[j]!=0; j++) {
+//                                printf("'%s' ", cmd[j]);
+//                        }
+//			printf("\n");
+//		}
 	}
 
 }
