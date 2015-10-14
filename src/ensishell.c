@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 #include <errno.h>
 
 #include "variante.h"
@@ -31,7 +32,7 @@
 
 Pid_List pidTable;
 
-pid_t create_processes(char ***processes){
+pid_t create_processes(char ***processes, char *in, char *out){
 	int pipe_in[2]; 
 	int pipe_out[2];
 	pid_t last_process;
@@ -47,6 +48,11 @@ pid_t create_processes(char ***processes){
 		}
 		pid_t process = fork();
 		if(process == 0){
+			if(i == 0 && in != NULL){
+				int inDescriptor = open(in, O_RDONLY);
+				dup2(inDescriptor, 0);
+				close(inDescriptor);
+			}
 			if(i!=0){
 				dup2(pipe_in[0], 0);
 				close(pipe_in[0]);
@@ -56,6 +62,11 @@ pid_t create_processes(char ***processes){
 				dup2(pipe_out[1], 1);
 				close(pipe_out[0]);
 				close(pipe_out[1]);
+			}
+			else if(out != NULL){
+				int outDescriptor = open(out, O_WRONLY | O_CREAT);
+				dup2(outDescriptor, 1);
+				close(outDescriptor);
 			}
 			int err = execvp(processes[i][0], processes[i]);
 			if(err == -1){
@@ -94,7 +105,7 @@ int executer(char *line)
 		printf("error: %s\n", l->err);
 		return 1;
 	}
-	pid_t process = create_processes(l->seq);
+	pid_t process = create_processes(l->seq, l->in, l->out);
 	if(!l->bg){
 		waitpid(process, NULL, 0);
 	}
