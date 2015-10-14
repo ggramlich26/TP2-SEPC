@@ -27,7 +27,7 @@ void clean_pid_list(Pid_List *l){
 		waitpid(it->next->pid, &status, WNOHANG | WUNTRACED | WCONTINUED);
 		//printf("pid: %d, command: %s, exited: %d, status: %d\n", it->next->pid, it->next->command, WIFEXITED(status)||WIFSIGNALED(status), status);
 		if(WIFEXITED(status) /*l|| WIFSIGNALED(status)*/){
-		printf("pid: %d, command: %s, exited: %d, status: %d\n", it->next->pid, it->next->command, WIFEXITED(status)||WIFSIGNALED(status), status);
+		//printf("pid: %d, command: %s, exited: %d, status: %d\n", it->next->pid, it->next->command, WIFEXITED(status)||WIFSIGNALED(status), status);
 				free(it->next->command);
 				Pid_List tmp = it->next;
 				it->next = it->next->next;

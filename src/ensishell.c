@@ -31,6 +31,52 @@
 
 Pid_List pidTable;
 
+pid_t create_processes(char ***processes){
+	int pipe_in[2]; 
+	int pipe_out[2];
+	pid_t last_process;
+	for(int i = 0; processes[i] != NULL; i++){
+		if(i >= 2){ 
+			close(pipe_in[0]);
+			close(pipe_in[1]); 
+		}
+		pipe_in[0] = pipe_out[0];
+	   	pipe_in[1] = pipe_out[1];
+		if(processes[i+1] != NULL){
+			pipe(pipe_out);
+		}
+		pid_t process = fork();
+		if(process == 0){
+			if(i!=0){
+				dup2(pipe_in[0], 0);
+				close(pipe_in[0]);
+				close(pipe_in[1]);
+			}
+			if(processes[i+1] != NULL){
+				dup2(pipe_out[1], 1);
+				close(pipe_out[0]);
+				close(pipe_out[1]);
+			}
+			int err = execvp(processes[i][0], processes[i]);
+			if(err == -1){
+				perror(NULL);
+				exit(0);
+			}
+		}
+		else{
+			add_pid_list(&pidTable, process, processes[i][0]);
+			if(processes[i+1]==NULL){
+				last_process = process;
+			}
+		}
+		if(processes[i+1] == NULL && i > 0){
+			close(pipe_in[0]);
+			close(pipe_in[1]);
+		}
+	}
+	return last_process;
+}
+
 int executer(char *line)
 {
 	/* Insert your code to execute the command line
@@ -48,19 +94,9 @@ int executer(char *line)
 		printf("error: %s\n", l->err);
 		return 1;
 	}
-	pid_t process = fork();
-	if(process == 0){
-		int err = execvp((l->seq[0])[0], l->seq[0]);
-		if(err == -1){
-			perror(NULL);
-			exit(0);
-		}
-	}
-	else{
-		add_pid_list(&pidTable, process, l->seq[0][0]);
-		if(!l->bg){
-			waitpid(process, NULL, 0);
-		}
+	pid_t process = create_processes(l->seq);
+	if(!l->bg){
+		waitpid(process, NULL, 0);
 	}
 
 	/* Remove this line when using parsecmd as it will free it */
@@ -100,9 +136,7 @@ int main() {
 		pidTable = create_pid_list();
 
 	while (1) {
-		//struct cmdline *l;
 		char *line=0;
-		//int i, j;
 		char *prompt = "ensishell>";
 
 		/* Readline use some internal memory structure that
@@ -138,6 +172,8 @@ int main() {
 #endif
 
 		executer(line);
+//		struct cmdline *l;
+//		int i, j;
 //		/* parsecmd free line and set it up to 0 */
 //		l = parsecmd( & line);
 //
