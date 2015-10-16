@@ -10,7 +10,10 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+<<<<<<< HEAD
 #include <wordexp.h>
+=======
+>>>>>>> 138c1bf0955ce6771510da005fdec35a34ab5f31
 #include <errno.h>
 
 #include "variante.h"
