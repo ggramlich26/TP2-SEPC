@@ -8,12 +8,14 @@ Pid_List create_pid_list(){
 	return NULL;
 }
 
-void add_pid_list(Pid_List *l, pid_t pid, char* command){
+void add_pid_list(Pid_List *l, pid_t pid, char* command, unsigned char background){
 	Pid_List el = malloc(sizeof(*el));
 	el->next = *l;
 	el->pid = pid;
 	el->command = malloc((strlen(command)+1) * sizeof(char));
 	strcpy(el->command, command);
+	el->background = background;
+	gettimeofday(&(el->time), NULL);
 	*l = el;
 }
 
@@ -46,4 +48,14 @@ void print_pid_list(Pid_List l){
 		printf("%d\t %s\n", it->pid, it->command);
 		it = it->next;
 	}
+}
+
+Pid_List find_pid_list(Pid_List l, pid_t pid){
+	while(l != NULL){
+		if(l->pid == pid){
+			return l;
+		}
+		l = l->next;
+	}
+	return NULL;
 }

@@ -10,11 +10,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-<<<<<<< HEAD
 #include <wordexp.h>
-=======
->>>>>>> 138c1bf0955ce6771510da005fdec35a34ab5f31
 #include <errno.h>
+#include <signal.h>
 
 #include "variante.h"
 #include "readcmd.h"
@@ -36,7 +34,23 @@
 
 Pid_List pidTable;
 
-pid_t create_processes(char ***processes, char *in, char *out){
+void terminationHandler(int signum, siginfo_t *info, void *context){
+	Pid_List process = find_pid_list(pidTable, info->si_pid);
+	//printf("info: %p, pid: %d, uid: %d\n", info, info->si_pid, info->si_uid);
+	if(process == NULL){
+		printf("Process %d terminated\n", info->si_pid);
+	}
+	else{
+		if(!process->background){
+			return;
+		}
+		struct timeval time;
+		gettimeofday(&time, NULL);
+		printf("Process %d:%s terminated after %ldms\n", process->pid, process->command, (-process->time.tv_sec + time.tv_sec)*1000+(-process->time.tv_usec+time.tv_usec)/1000);
+	}
+}
+
+pid_t create_processes(char ***processes, char *in, char *out, unsigned char background){
 	int pipe_in[2]; 
 	int pipe_out[2];
 	pid_t last_process;
@@ -87,7 +101,7 @@ pid_t create_processes(char ***processes, char *in, char *out){
 			}
 		}
 		else{
-			add_pid_list(&pidTable, process, processes[i][0]);
+			add_pid_list(&pidTable, process, processes[i][0], background);
 			if(processes[i+1]==NULL){
 				last_process = process;
 			}
@@ -117,9 +131,15 @@ int executer(char *line)
 		printf("error: %s\n", l->err);
 		return 1;
 	}
-	pid_t process = create_processes(l->seq, l->in, l->out);
+	pid_t process = create_processes(l->seq, l->in, l->out, l->bg);
 	if(!l->bg){
-		waitpid(process, NULL, 0);
+		while(1){
+			waitpid(process, NULL, 0);
+			if(waitpid(process, NULL, 0) == -1){
+				break;
+			}
+		}
+		//waitpid(process, NULL, 0);
 	}
 
 	/* Remove this line when using parsecmd as it will free it */
@@ -157,6 +177,14 @@ int main() {
 #endif
 
 		pidTable = create_pid_list();
+
+		struct sigaction act;
+		memset(&act, '\0', sizeof(act));
+		act.sa_sigaction = &terminationHandler;
+		act.sa_flags = SA_SIGINFO | SA_NOCLDSTOP;
+		if(sigaction(SIGCHLD, &act, NULL) == -1){
+			perror("sigaction");
+		}
 
 	while (1) {
 		char *line=0;
